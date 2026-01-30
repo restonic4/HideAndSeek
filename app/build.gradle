@@ -1,0 +1,316 @@
+// Copyright (c) 2023 Joseph Hale
+// 
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+import groovy.json.JsonSlurper
+
+// Configure the dependencies of this gradle build script.
+buildscript {
+  repositories {
+    mavenCentral()
+  }
+  dependencies {
+    classpath 'org.yaml:snakeyaml:1.29'  // To manipulate the plugin.yml
+    // auto-version MUST be here so I can apply it *after* setting the project version.
+    classpath 'org.shipkit:shipkit-auto-version:1.1.19'  // Discovers last released version
+  }
+}
+
+// Configure the plugins needed for building this project.
+plugins {
+  id 'java-library'
+  id 'jacoco'
+  id 'org.shipkit.shipkit-changelog' version '1.1.15'      // Auto-generates the Changelog
+}
+
+def paperJarName = 'paper-' + paperVersion + '-' + paperBuild + '.jar'
+
+// Configure the dependencies of this project.
+repositories {
+  jcenter()
+
+  maven {
+    url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
+
+    // As of Gradle 5.1, you can limit this to only those
+    // dependencies you expect from it
+    content {
+      includeGroup 'org.bukkit'
+      includeGroup 'org.spigotmc'
+    }
+  }
+  /*
+  As Spigot-API depends on the Bungeecord ChatComponent-API,
+  we need to add the Sonatype OSS repository, as Gradle,
+  in comparison to maven, doesn't want to understand the ~/.m2
+  directory unless added using mavenLocal(). Maven usually just gets
+  it from there, as most people have run the BuildTools at least once.
+  This is therefore not needed if you're using the full Spigot/CraftBukkit,
+  or if you're using the Bukkit API.
+  */
+  maven { url = 'https://oss.sonatype.org/content/repositories/snapshots' }
+  maven { url = 'https://oss.sonatype.org/content/repositories/central' }
+  maven { url 'https://hub.spigotmc.org/nexus/content/repositories/public/' } // Repo for MockBukkit
+  maven { url 'https://repo.papermc.io/repository/maven-public/' }  // Repo for Paper
+  mavenLocal() // This is needed for CraftBukkit and Spigot.
+}
+dependencies {
+
+  // Required for the Minecraft Plugin
+  implementation 'org.spigotmc:spigot-api:1.19.4-R0.1-SNAPSHOT' // The Spigot API with no shadowing. Requires the OSS repo.
+
+  // Unit testing packages
+  testImplementation 'junit:junit:4.12'
+  testImplementation 'com.github.seeseemelk:MockBukkit-v1.19:2.29.0'  // MockBukkit server required for Unit Testing
+  testImplementation "org.mockito:mockito-inline:3.+"  // Used for Unit Testing, this particular artifact can mock final methods.
+
+}
+
+// Set up global variables.
+project.ext {
+  repository = pluginOwner + '/' + pluginName
+}
+// Project version MUST be manually set *before* applying the auto-version plugin
+project.version = getPluginYml().version  
+apply plugin: 'org.shipkit.shipkit-auto-version'
+
+test {
+  finalizedBy jacocoTestReport // report is always generated after tests run
+}
+
+jacocoTestReport {
+  // Inspired by https://www.baeldung.com/jacoco-report-exclude#2-gradle-configuration
+  dependsOn test // tests are required to run before generating the report
+  
+  afterEvaluate {
+    classDirectories.setFrom(files(classDirectories.files.collect {
+      fileTree(dir: it, exclude: [
+        "dev/" + pluginOwner + "/" + pluginName + "/bstats/*"
+      ])
+    }))
+  }
+}
+
+jar {
+  archivesBaseName = rootProject.name
+  archiveVersion = project.version
+}
+
+task version {
+  doLast {
+    println project.version
+  }
+}
+
+task isNewVersion {
+  doLast {
+    println isNewVersion()
+  }
+}
+
+task cleanupChangelog (dependsOn: 'generateChangelog') {
+  ext {
+    outputFile = new File(project.buildDir, "changelog-clean.md")
+  }
+  
+  doLast {  // i.e. only if `gradle cleanupChangelog` is run
+    // Clean up the changelog.
+    def cleanedChangelog = generateChangelog.outputFile.text
+    cleanedChangelog = cleanedChangelog.replaceAll(/<sup>.*<\/sup>\n\n/, "")  // Debrand
+    cleanedChangelog = cleanedChangelog.replaceAll(/####.*\n/, "")  // Remove redundant heading.
+    logger.lifecycle('Saving cleaned up changelog to file: {}', cleanupChangelog.outputFile)
+    ext.outputFile.write(cleanedChangelog)
+  }
+}
+
+task copyPluginToDevServer (dependsOn: 'build') {
+    group 'Local Development'
+    doLast {
+        copy {
+            from 'build/libs/' + pluginName + '-' + project.version + '.jar'
+            into '.server/plugins'
+        }
+    }
+}
+task downloadServerSoftware {
+    group 'Local Development'
+    doLast {
+        def serverDirPath = projectDir.toString() + '/.server'
+        def serverDir = new File(serverDirPath)
+        if (!serverDir.exists()) {
+            serverDir.mkdir()
+        }
+        def serverJarPath = serverDirPath + "/" + paperJarName
+        def serverJar = new File(serverJarPath)
+        if (!serverJar.exists()) {
+            def url = new JsonSlurper()
+                    .parseText(new URL("https://fill.papermc.io/v3/projects/paper/versions/${paperVersion}/builds/${paperBuild}").text)
+                    .downloads["server:default"].url
+            ant.get(src: url, dest: serverJarPath)
+        }
+        new File(serverDirPath + '/eula.txt').write('eula=true')
+    }
+}
+task runDevServer {
+    group 'Local Development'
+    dependsOn = [
+        downloadServerSoftware,
+        build,
+        copyPluginToDevServer
+    ]
+    doLast {
+        exec {
+            workingDir '.server'
+            commandLine 'java', '-jar', paperJarName, 'nogui'
+        }
+    }
+}
+
+generateChangelog {
+  previousRevision = project.ext.'shipkit-auto-version.previous-tag'
+  githubToken = System.getenv("GITHUB_TOKEN")
+  repository = project.ext.repository
+
+  finalizedBy cleanupChangelog
+}
+
+boolean isNewVersion() {
+  def last_released_version = project.ext.'shipkit-auto-version.previous-version'
+  def latestVersion = mostRecentVersion([last_released_version, project.version])
+  def isNew = latestVersion == project.version && latestVersion != last_released_version
+  logger.lifecycle('Last released version was ' + last_released_version 
+                 + ' and current version is ' + project.version 
+                 + ' therefore this ' + (isNew ? 'is' : 'is not')
+                 + ' a new version.' )
+  return isNew
+}
+
+String mostRecentVersion( List versions ) {
+  // Copied from https://stackoverflow.com/a/7737400/14765128
+  versions.sort( false ) { a, b ->
+    [a,b]*.tokenize('.')*.collect { it as int }.with { u, v ->
+      [u,v].transpose().findResult{ x,y-> x<=>y ?: null } ?: u.size() <=> v.size()
+    }
+  }[-1]
+}
+
+def getPluginYml() {
+  // Read in the plugin.yml file for the Minecraft Plugin.
+  // Aided by https://stackoverflow.com/a/48320319/14765128
+  String PLUGIN_YML_PATH = new File(buildscript.sourceFile.parent, "src/main/resources/plugin.yml").absolutePath
+  InputStream pluginYml = new File(PLUGIN_YML_PATH).newInputStream()
+  return new org.yaml.snakeyaml.Yaml().load(pluginYml)
+}
+
+task renamePlugin {
+    doLast {
+        logger.lifecycle("Renaming plugin to " + newAuthor + "/" + newPluginName)
+        def pluginRenamer = new PluginRenamer(
+            pluginOwner, pluginName,
+            newAuthor, newPluginName
+        )
+
+        pluginRenamer.renameFolder(new File('app/src'))
+        pluginRenamer.renameFile(new File('gradle.properties'))
+    }
+}
+
+
+class PluginRenamer {
+
+    String oldAuthor
+    String oldAuthorSnakeCase
+    String oldAuthorCapitalized
+
+    String oldPluginName
+    String oldPluginNameSnakeCase
+    String oldPluginNameCapitalized
+
+    String newAuthor
+    String newAuthorSnakeCase
+    String newAuthorCapitalized
+
+    String newPluginName
+    String newPluginNameSnakeCase
+    String newPluginNameCapitalized
+
+    PluginRenamer(String oldAuthor, String oldPluginName, String newAuthor, String newPluginName) {
+        this.oldAuthor = oldAuthor
+        this.oldAuthorSnakeCase = asSnakeCase(oldAuthor)
+        this.oldAuthorCapitalized = asCapitalized(oldAuthorSnakeCase)
+
+        this.oldPluginName = oldPluginName
+        this.oldPluginNameSnakeCase = asSnakeCase(oldPluginName)
+        this.oldPluginNameCapitalized = asCapitalized(oldPluginNameSnakeCase)
+        
+        this.newAuthor = newAuthor
+        this.newAuthorSnakeCase = asSnakeCase(newAuthor)
+        this.newAuthorCapitalized = asCapitalized(newAuthorSnakeCase)
+        
+        this.newPluginName = newPluginName
+        this.newPluginNameSnakeCase = asSnakeCase(newPluginName)
+        this.newPluginNameCapitalized = asCapitalized(newPluginNameSnakeCase)
+    }
+    void renameFolder(File folder) {
+        folder.eachFile {
+            if (it.isFile()) {
+                renameFile(it)
+            }
+        }
+        folder.eachDir {
+            if (it.isDirectory()) {
+                renameFolder(it)
+            }
+        }
+        println("Renaming folder " + folder)
+        def newFolderName = renameText(folder.getName())
+        if (newFolderName != folder.getName()) {
+            folder.renameTo(new File(folder.parent, newFolderName))
+        }
+    }
+    void renameFile(File file) {
+        println("Renaming file " + file)
+        String text = file.text
+        text = renameText(text)
+        file.write(text)
+
+        def newFileName = renameText(file.getName())
+        if (newFileName != file.getName()) {
+            file.renameTo(new File(file.parent, newFileName))
+        }
+    }
+    String renameText(String text) {
+        def lines = text.split("\n")
+        lines = lines.collect {
+            renameLine(it)
+        }
+        text = lines.join("\n")
+        return text
+    }
+    String renameLine(String line) {
+        if (line.contains("[ATTRIBUTION]")) {
+            return line  // Don't rename attribution lines.
+        }
+        line = line.replaceAll(oldAuthor, newAuthor)
+        line = line.replaceAll(oldAuthorSnakeCase, newAuthorSnakeCase)
+        line = line.replaceAll(oldAuthorCapitalized, newAuthorCapitalized)
+        line = line.replaceAll(oldPluginName, newPluginName)
+        line = line.replaceAll(oldPluginNameSnakeCase, newPluginNameSnakeCase)
+        line = line.replaceAll(oldPluginNameCapitalized, newPluginNameCapitalized)
+        return line
+    }
+    def asSnakeCase(String s) {
+        return s
+            .toLowerCase()
+            .replaceAll(/[\s-]+/, "_")
+            .replaceAll(/[^a-z0-9_]/, "")
+    }
+    def asCapitalized(String s) {
+        return s
+            .split("_")
+            .collect { it.capitalize() }
+            .join("")
+    }
+}
