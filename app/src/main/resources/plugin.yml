@@ -5,8 +5,13 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 ---  # Denotes the start of this YAML document. https://yaml.org/spec/1.2/spec.html#id2760395
-name: PapermcPluginTemplate
-main: dev.thehale.papermc_plugin_template.PapermcPluginTemplatePlugin
+name: HideAndSeek
+main: dev.restonic4.hide_and_seek.HideAndSeekPlugin
 version: 0.1.0
 api-version: 1.19
+commands:
+  hs:
+    description: Main command for Hide and Seek.
+    permission: hideandseek.admin
+    usage: /hs <subcommand>
 ... # Denotes the end of this YAML document. https://yaml.org/spec/1.2/spec.html#id2760395

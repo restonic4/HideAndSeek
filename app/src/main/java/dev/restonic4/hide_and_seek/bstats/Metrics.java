@@ -1,5 +1,5 @@
 // From https://github.com/Bastian/bStats-Metrics/blob/40c234fe8213fb90600261dc882832490ee2130b/bukkit/Metrics.java
-package dev.thehale.papermc_plugin_template.bstats;
+package dev.restonic4.hide_and_seek.bstats;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
