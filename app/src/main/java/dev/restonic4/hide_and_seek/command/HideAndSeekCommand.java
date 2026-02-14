@@ -1,6 +1,8 @@
 package dev.restonic4.hide_and_seek.command;
 
 import dev.restonic4.hide_and_seek.HideAndSeekPlugin;
+import dev.restonic4.hide_and_seek.manager.CuboidArea;
+import dev.restonic4.hide_and_seek.manager.GameAreas;
 import dev.restonic4.hide_and_seek.manager.GameManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -100,6 +102,32 @@ public class HideAndSeekCommand implements CommandExecutor, TabCompleter {
                 gameManager.broadcastWin(winner);
                 break;
 
+            case "area":
+                if (args.length < 3) {
+                    sender.sendMessage(Component.text("Usage: /hs area <name> <enable|disable>", NamedTextColor.RED));
+                    return true;
+                }
+                String areaName = args[1];
+                boolean enable = args[2].equalsIgnoreCase("enable") || args[2].equalsIgnoreCase("on");
+
+                CuboidArea foundArea = null;
+                for (CuboidArea area : GameAreas.getSubAreas()) {
+                    if (area.getName().equalsIgnoreCase(areaName)) {
+                        foundArea = area;
+                        break;
+                    }
+                }
+
+                if (foundArea == null) {
+                    sender.sendMessage(Component.text("Area not found. Available: " +
+                            GameAreas.getSubAreas().stream().map(CuboidArea::getName).collect(Collectors.joining(", ")),
+                            NamedTextColor.RED));
+                    return true;
+                }
+
+                HideAndSeekPlugin.instance.getAreaManager().setSubAreaEnabled(foundArea, enable);
+                break;
+
             default:
                 sender.sendMessage(Component.text("Unknown subcommand.", NamedTextColor.RED));
                 break;
@@ -112,8 +140,19 @@ public class HideAndSeekCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
             @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("seeker", "start", "end", "freeze", "unfreeze", "countdown", "win").stream()
+            return Arrays.asList("seeker", "start", "end", "freeze", "unfreeze", "countdown", "win", "area").stream()
                     .filter(s -> s.startsWith(args[0].toLowerCase()))
+                    .collect(Collectors.toList());
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("area")) {
+            return GameAreas.getSubAreas().stream()
+                    .map(CuboidArea::getName)
+                    .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                    .collect(Collectors.toList());
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("area")) {
+            return Arrays.asList("enable", "disable").stream()
+                    .filter(s -> s.startsWith(args[2].toLowerCase()))
                     .collect(Collectors.toList());
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seeker")) {

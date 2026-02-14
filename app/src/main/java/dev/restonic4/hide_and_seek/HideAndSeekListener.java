@@ -1,5 +1,7 @@
 package dev.restonic4.hide_and_seek;
 
+import dev.restonic4.hide_and_seek.manager.CuboidArea;
+import dev.restonic4.hide_and_seek.manager.GameAreas;
 import dev.restonic4.hide_and_seek.manager.GameManager;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
@@ -14,6 +16,8 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 
 public class HideAndSeekListener implements Listener {
     private final GameManager gameManager;
@@ -62,6 +66,26 @@ public class HideAndSeekListener implements Listener {
 
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+
+        // Main Play Area enforcement
+        if (!GameAreas.getPlayArea().isInside(event.getTo())) {
+            player.teleport(GameAreas.getSpawn());
+            player.sendMessage(Component.text("You went outside the play area!", NamedTextColor.RED));
+            return;
+        }
+
+        // Subarea enforcement (Hiders only)
+        if (gameManager.isHider(player)) {
+            for (CuboidArea area : GameAreas.getSubAreas()) {
+                if (!area.isEnabled() && area.isInside(event.getTo())) {
+                    event.setCancelled(true);
+                    player.sendMessage(Component.text("This area is currently disabled!", NamedTextColor.RED));
+                    return;
+                }
+            }
+        }
+
         if (gameManager.isFrozen()) {
             // Prevent movement but allow looking around
             if (event.getFrom().getX() != event.getTo().getX() ||

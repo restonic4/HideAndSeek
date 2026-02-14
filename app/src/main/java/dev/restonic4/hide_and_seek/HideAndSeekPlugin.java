@@ -1,6 +1,7 @@
 package dev.restonic4.hide_and_seek;
 
 import dev.restonic4.hide_and_seek.command.HideAndSeekCommand;
+import dev.restonic4.hide_and_seek.manager.AreaManager;
 import dev.restonic4.hide_and_seek.manager.GameManager;
 import java.io.File;
 import java.util.logging.Logger;
@@ -19,6 +20,7 @@ public class HideAndSeekPlugin extends JavaPlugin {
     public final static int BSTATS_PLUGIN_ID = 20765;
 
     private GameManager gameManager;
+    private AreaManager areaManager;
 
     public HideAndSeekPlugin() {
         super();
@@ -36,6 +38,7 @@ public class HideAndSeekPlugin extends JavaPlugin {
         logTemplateAttribution();
 
         this.gameManager = new GameManager();
+        this.areaManager = new AreaManager(this.gameManager);
 
         setup();
         log.info("Ready!");
@@ -62,5 +65,9 @@ public class HideAndSeekPlugin extends JavaPlugin {
 
     public GameManager getGameManager() {
         return gameManager;
+    }
+
+    public AreaManager getAreaManager() {
+        return areaManager;
     }
 }

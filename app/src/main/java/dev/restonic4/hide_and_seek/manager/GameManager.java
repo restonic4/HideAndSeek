@@ -53,6 +53,7 @@ public class GameManager {
         hiders.clear();
         spectators.clear();
         for (Player player : Bukkit.getOnlinePlayers()) {
+            player.teleport(GameAreas.getSpawn());
             if (seeker != null && player.getUniqueId().equals(seeker)) {
                 player.setGameMode(GameMode.ADVENTURE);
             } else {
