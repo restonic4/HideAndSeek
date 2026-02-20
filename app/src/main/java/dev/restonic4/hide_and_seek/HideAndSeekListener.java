@@ -14,6 +14,27 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.block.SignChangeEvent;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBurnEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
+import org.bukkit.event.block.BlockFadeEvent;
+import org.bukkit.event.block.BlockFormEvent;
+import org.bukkit.event.block.BlockFromToEvent;
+import org.bukkit.event.block.BlockGrowEvent;
+import org.bukkit.event.block.BlockPhysicsEvent;
+import org.bukkit.event.block.BlockPistonExtendEvent;
+import org.bukkit.event.block.BlockPistonRetractEvent;
+import org.bukkit.event.block.BlockSpreadEvent;
+import org.bukkit.event.block.LeavesDecayEvent;
+import org.bukkit.event.block.SpongeAbsorbEvent;
+import org.bukkit.event.entity.EntityChangeBlockEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.hanging.HangingBreakByEntityEvent;
+import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.entity.Projectile;
+import org.bukkit.block.Sign;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 import net.kyori.adventure.text.Component;
@@ -120,10 +141,126 @@ public class HideAndSeekListener implements Listener {
 
     @EventHandler
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        if (event.getDamager() instanceof Player seeker && event.getEntity() instanceof Player hider) {
-            if (gameManager.isRunning() && gameManager.isSeeker(seeker) && gameManager.isHider(hider)) {
+        Player player = null;
+        if (event.getDamager() instanceof Player p) {
+            player = p;
+        } else if (event.getDamager() instanceof Projectile projectile && projectile.getShooter() instanceof Player p) {
+            player = p;
+        }
+
+        if (player == null) {
+            return;
+        }
+
+        if (event.getEntity() instanceof Player hider) {
+            if (gameManager.isRunning() && gameManager.isSeeker(player) && gameManager.isHider(hider)) {
                 gameManager.catchHider(hider);
             }
         }
+
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onHangingBreak(HangingBreakByEntityEvent event) {
+        if (event.getRemover() instanceof Player player) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onArmorStandManipulate(PlayerArmorStandManipulateEvent event) {
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onSignChange(SignChangeEvent event) {
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+            if (event.getClickedBlock() != null && event.getClickedBlock().getState() instanceof Sign) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onBlockFromTo(BlockFromToEvent event) {
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onBlockGrow(BlockGrowEvent event) {
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onBlockSpread(BlockSpreadEvent event) {
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onBlockBurn(BlockBurnEvent event) {
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onBlockFade(BlockFadeEvent event) {
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onLeavesDecay(LeavesDecayEvent event) {
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onBlockForm(BlockFormEvent event) {
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onBlockExplode(BlockExplodeEvent event) {
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onEntityExplode(EntityExplodeEvent event) {
+        event.blockList().clear();
+    }
+
+    @EventHandler
+    public void onEntityChangeBlock(EntityChangeBlockEvent event) {
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onSpongeAbsorb(SpongeAbsorbEvent event) {
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onBlockPhysics(BlockPhysicsEvent event) {
+        if (event.getBlock().getType().hasGravity()) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPistonExtend(BlockPistonExtendEvent event) {
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onPistonRetract(BlockPistonRetractEvent event) {
+        event.setCancelled(true);
     }
 }

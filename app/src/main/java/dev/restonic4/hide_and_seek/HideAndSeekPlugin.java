@@ -1,6 +1,7 @@
 package dev.restonic4.hide_and_seek;
 
 import dev.restonic4.hide_and_seek.command.HideAndSeekCommand;
+import dev.restonic4.hide_and_seek.command.SpawnCommand;
 import dev.restonic4.hide_and_seek.manager.AreaManager;
 import dev.restonic4.hide_and_seek.manager.GameManager;
 import java.io.File;
@@ -41,6 +42,7 @@ public class HideAndSeekPlugin extends JavaPlugin {
         this.areaManager = new AreaManager(this.gameManager);
 
         setup();
+        this.gameManager.startReminderTask();
         log.info("Ready!");
     }
 
@@ -54,6 +56,9 @@ public class HideAndSeekPlugin extends JavaPlugin {
         HideAndSeekCommand cmd = new HideAndSeekCommand(gameManager);
         getCommand("hs").setExecutor(cmd);
         getCommand("hs").setTabCompleter(cmd);
+
+        SpawnCommand spawnCmd = new SpawnCommand(gameManager);
+        getCommand("spawn").setExecutor(spawnCmd);
 
         new Metrics(this, BSTATS_PLUGIN_ID);
     }

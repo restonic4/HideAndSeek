@@ -104,11 +104,12 @@ public class HideAndSeekCommand implements CommandExecutor, TabCompleter {
 
             case "area":
                 if (args.length < 3) {
-                    sender.sendMessage(Component.text("Usage: /hs area <name> <enable|disable>", NamedTextColor.RED));
+                    sender.sendMessage(
+                            Component.text("Usage: /hs area <name> <enable|disable|warn>", NamedTextColor.RED));
                     return true;
                 }
                 String areaName = args[1];
-                boolean enable = args[2].equalsIgnoreCase("enable") || args[2].equalsIgnoreCase("on");
+                String action = args[2].toLowerCase();
 
                 CuboidArea foundArea = null;
                 for (CuboidArea area : GameAreas.getSubAreas()) {
@@ -125,7 +126,14 @@ public class HideAndSeekCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
 
-                HideAndSeekPlugin.instance.getAreaManager().setSubAreaEnabled(foundArea, enable);
+                if (action.equalsIgnoreCase("warn")) {
+                    HideAndSeekPlugin.instance.getAreaManager().warnSubArea(foundArea);
+                    sender.sendMessage(Component.text("Sent warning to hiders in " + foundArea.getName() + "!",
+                            NamedTextColor.GREEN));
+                } else {
+                    boolean enable = action.equalsIgnoreCase("enable") || action.equalsIgnoreCase("on");
+                    HideAndSeekPlugin.instance.getAreaManager().setSubAreaEnabled(foundArea, enable);
+                }
                 break;
 
             default:
@@ -151,7 +159,7 @@ public class HideAndSeekCommand implements CommandExecutor, TabCompleter {
                     .collect(Collectors.toList());
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("area")) {
-            return Arrays.asList("enable", "disable").stream()
+            return Arrays.asList("enable", "disable", "warn").stream()
                     .filter(s -> s.startsWith(args[2].toLowerCase()))
                     .collect(Collectors.toList());
         }

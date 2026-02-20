@@ -22,6 +22,11 @@ public class AreaManager {
         if (!enabled) {
             Bukkit.broadcast(Component.text("Area " + area.getName() + " has been DISABLED!", NamedTextColor.RED));
 
+            // Play global wither spawn sound
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_WITHER_SPAWN, 1.0f, 1.0f);
+            }
+
             // Kill hiders inside
             for (Player player : Bukkit.getOnlinePlayers()) {
                 if (gameManager.isHider(player) && area.isInside(player.getLocation())) {
@@ -32,6 +37,45 @@ public class AreaManager {
             }
         } else {
             Bukkit.broadcast(Component.text("Area " + area.getName() + " has been ENABLED!", NamedTextColor.GREEN));
+        }
+    }
+
+    public void warnSubArea(CuboidArea area) {
+        net.kyori.adventure.title.Title title = net.kyori.adventure.title.Title.title(
+                Component.text("WARNING", NamedTextColor.YELLOW),
+                Component.empty(),
+                net.kyori.adventure.title.Title.Times.times(java.time.Duration.ofMillis(500),
+                        java.time.Duration.ofMillis(3000), java.time.Duration.ofMillis(500)));
+
+        Component message = Component.text("Warning: The area " + area.getName() + " is about to close!",
+                NamedTextColor.YELLOW);
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (gameManager.isHider(player) && area.isInside(player.getLocation())) {
+                player.showTitle(title);
+                player.sendMessage(message);
+
+                new BukkitRunnable() {
+                    int repetitions = 0;
+
+                    @Override
+                    public void run() {
+                        if (repetitions >= 5) {
+                            this.cancel();
+                            return;
+                        }
+
+                        // 2 pings
+                        player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 2.0f);
+
+                        Bukkit.getScheduler().runTaskLater(HideAndSeekPlugin.instance, () -> {
+                            player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.5f);
+                        }, 2L); // Slight gap between the 2 pings
+
+                        repetitions++;
+                    }
+                }.runTaskTimer(HideAndSeekPlugin.instance, 0L, 10L); // 10 ticks = 0.5 seconds
+            }
         }
     }
 

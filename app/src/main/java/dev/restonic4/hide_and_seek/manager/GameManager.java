@@ -8,7 +8,9 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -16,6 +18,7 @@ public class GameManager {
     private UUID seeker;
     private final Set<UUID> hiders = new HashSet<>();
     private final Set<UUID> spectators = new HashSet<>();
+    private final Map<UUID, Integer> spawnUsageCount = new HashMap<>();
     private boolean frozen = false;
     private boolean running = false;
 
@@ -44,6 +47,10 @@ public class GameManager {
             spectators.add(hider.getUniqueId());
             hider.setGameMode(GameMode.SPECTATOR);
             Bukkit.broadcast(Component.text(hider.getName() + " got caught!", NamedTextColor.RED));
+
+            // Play thunder sound at the location where the player was caught
+            hider.getWorld().playSound(hider.getLocation(), org.bukkit.Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 1.0f);
+
             updateAllTabLists();
         }
     }
@@ -52,6 +59,7 @@ public class GameManager {
         running = true;
         hiders.clear();
         spectators.clear();
+        spawnUsageCount.clear();
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.teleport(GameAreas.getSpawn());
             if (seeker != null && player.getUniqueId().equals(seeker)) {
@@ -70,6 +78,7 @@ public class GameManager {
         seeker = null;
         hiders.clear();
         spectators.clear();
+        spawnUsageCount.clear();
         frozen = false;
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.setGameMode(GameMode.ADVENTURE);
@@ -107,6 +116,23 @@ public class GameManager {
                 count--;
             }
         }.runTaskTimer(dev.restonic4.hide_and_seek.HideAndSeekPlugin.instance, 0L, 20L);
+    }
+
+    public void startReminderTask() {
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                Bukkit.broadcast(Component.text("Remember: Use ", NamedTextColor.YELLOW)
+                        .append(Component.text("/spawn", NamedTextColor.GOLD))
+                        .append(Component.text(" if you get stuck or need to return to the center!",
+                                NamedTextColor.YELLOW)));
+
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_BIT, 1.0f, 1.0f);
+                }
+            }
+        }.runTaskTimer(dev.restonic4.hide_and_seek.HideAndSeekPlugin.instance, 12000L, 12000L); // 12000 ticks = 10
+                                                                                                // minutes
     }
 
     public void broadcastWin(String winner) {
@@ -175,5 +201,13 @@ public class GameManager {
 
     public boolean isRunning() {
         return running;
+    }
+
+    public int getSpawnUsage(Player player) {
+        return spawnUsageCount.getOrDefault(player.getUniqueId(), 0);
+    }
+
+    public void incrementSpawnUsage(Player player) {
+        spawnUsageCount.put(player.getUniqueId(), getSpawnUsage(player) + 1);
     }
 }

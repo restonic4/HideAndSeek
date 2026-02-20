@@ -14,4 +14,7 @@ commands:
     description: Main command for Hide and Seek.
     permission: hideandseek.admin
     usage: /hs <subcommand>
+  spawn:
+    description: Teleport to spawn.
+    usage: /spawn
 ... # Denotes the end of this YAML document. https://yaml.org/spec/1.2/spec.html#id2760395
