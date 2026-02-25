@@ -13,6 +13,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import dev.restonic4.hide_and_seek.HideAndSeekPlugin;
+import dev.restonic4.hide_and_seek.manager.WhitelistManager;
 
 public class GameManager {
     private UUID seeker;
@@ -159,10 +161,19 @@ public class GameManager {
         // players.
 
         for (Player online : Bukkit.getOnlinePlayers()) {
+            WhitelistManager whitelistManager = HideAndSeekPlugin.instance.getWhitelistManager();
+            WhitelistManager.WhitelistEntry entry = whitelistManager.getEntry(online.getUniqueId());
+            boolean isPremium = entry != null && entry.is_premium;
+
+            Component coloredName = Component.text(online.getName());
+            if (isPremium) {
+                coloredName = Component.text("[+] " + online.getName(), NamedTextColor.LIGHT_PURPLE);
+            }
+
             if (isHider(online)) {
                 // Hiders get a special name in tab
                 online.playerListName(Component.text("[Hider] ", NamedTextColor.GRAY)
-                        .append(Component.text(online.getName(), NamedTextColor.GREEN)));
+                        .append(coloredName.colorIfAbsent(NamedTextColor.GREEN)));
                 player.showPlayer(dev.restonic4.hide_and_seek.HideAndSeekPlugin.instance, online);
             } else if (isSeeker(online)) {
                 // Seeker might be hidden from tab if possible, or just labeled.
@@ -177,11 +188,12 @@ public class GameManager {
                     player.hidePlayer(dev.restonic4.hide_and_seek.HideAndSeekPlugin.instance, online);
                 } else {
                     player.showPlayer(dev.restonic4.hide_and_seek.HideAndSeekPlugin.instance, online);
-                    online.playerListName(Component.text("[Caught] " + online.getName(), NamedTextColor.RED));
+                    online.playerListName(Component.text("[Caught] ", NamedTextColor.RED).append(coloredName));
                 }
             } else {
                 // Others (ops not in game, etc)
                 player.showPlayer(dev.restonic4.hide_and_seek.HideAndSeekPlugin.instance, online);
+                online.playerListName(coloredName);
             }
         }
 

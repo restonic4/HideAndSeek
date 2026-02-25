@@ -7,6 +7,7 @@ import dev.restonic4.hide_and_seek.manager.GameManager;
 import java.io.File;
 import java.util.logging.Logger;
 
+import dev.restonic4.hide_and_seek.manager.WhitelistManager;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.java.JavaPluginLoader;
@@ -22,6 +23,8 @@ public class HideAndSeekPlugin extends JavaPlugin {
 
     private GameManager gameManager;
     private AreaManager areaManager;
+    private WhitelistManager whitelistManager;
+    private String eventId;
 
     public HideAndSeekPlugin() {
         super();
@@ -38,11 +41,16 @@ public class HideAndSeekPlugin extends JavaPlugin {
         log = getLogger();
         logTemplateAttribution();
 
+        saveDefaultConfig();
+        this.eventId = getConfig().getString("event-id", "default-event-id");
+
         this.gameManager = new GameManager();
         this.areaManager = new AreaManager(this.gameManager);
+        this.whitelistManager = new WhitelistManager(this.eventId);
 
         setup();
         this.gameManager.startReminderTask();
+        this.whitelistManager.startTasks();
         log.info("Ready!");
     }
 
@@ -74,5 +82,9 @@ public class HideAndSeekPlugin extends JavaPlugin {
 
     public AreaManager getAreaManager() {
         return areaManager;
+    }
+
+    public WhitelistManager getWhitelistManager() {
+        return whitelistManager;
     }
 }

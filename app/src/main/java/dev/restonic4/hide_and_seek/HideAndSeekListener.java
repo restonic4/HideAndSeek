@@ -39,6 +39,10 @@ import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import io.papermc.paper.event.player.AsyncChatEvent;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
+import dev.restonic4.hide_and_seek.manager.WhitelistManager;
+import net.kyori.adventure.text.format.TextDecoration;
 
 public class HideAndSeekListener implements Listener {
     private final GameManager gameManager;
@@ -77,6 +81,31 @@ public class HideAndSeekListener implements Listener {
         }
 
         gameManager.updateAllTabLists();
+    }
+
+    @EventHandler
+    public void onPlayerPreLogin(AsyncPlayerPreLoginEvent event) {
+        WhitelistManager whitelistManager = HideAndSeekPlugin.instance.getWhitelistManager();
+        if (!whitelistManager.isWhitelistedOffline(event.getUniqueId())) {
+            event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST,
+                    Component.text("You are not whitelisted for this event!", NamedTextColor.RED));
+        }
+    }
+
+    @EventHandler
+    public void onPlayerChat(AsyncChatEvent event) {
+        Player player = event.getPlayer();
+        WhitelistManager whitelistManager = HideAndSeekPlugin.instance.getWhitelistManager();
+        WhitelistManager.WhitelistEntry entry = whitelistManager.getEntry(player.getUniqueId());
+
+        if (entry != null && entry.is_premium) {
+            Component premiumTag = Component.text("[PREMIUM] ", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD);
+            Component name = Component.text(player.getName(), NamedTextColor.LIGHT_PURPLE);
+
+            event.renderer((source, sourceDisplayName, message, viewer) -> premiumTag.append(name)
+                    .append(Component.text(": ", NamedTextColor.WHITE))
+                    .append(message));
+        }
     }
 
     @EventHandler
