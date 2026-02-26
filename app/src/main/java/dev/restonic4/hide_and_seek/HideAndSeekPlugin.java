@@ -43,6 +43,7 @@ public class HideAndSeekPlugin extends JavaPlugin {
 
         saveDefaultConfig();
         this.eventId = getConfig().getString("event-id", "default-event-id");
+        log.info("Using event-id: " + this.eventId + " for whitelist fetching.");
 
         this.gameManager = new GameManager();
         this.areaManager = new AreaManager(this.gameManager);

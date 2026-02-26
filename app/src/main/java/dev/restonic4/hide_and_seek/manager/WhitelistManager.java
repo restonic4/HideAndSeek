@@ -65,6 +65,10 @@ public class WhitelistManager {
         String url = String.format(API_URL_TEMPLATE, eventId);
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
+                .header("User-Agent",
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                .header("Accept", "application/json")
+                .version(HttpClient.Version.HTTP_1_1)
                 .GET()
                 .build();
 
@@ -77,6 +81,9 @@ public class WhitelistManager {
                     } else {
                         HideAndSeekPlugin.log
                                 .warning("API returned status code: " + response.statusCode() + " for URL: " + url);
+                        if (response.statusCode() == 401 || response.statusCode() == 403) {
+                            HideAndSeekPlugin.log.warning("Response body: " + response.body());
+                        }
                         return (List<WhitelistEntry>) null;
                     }
                 })
