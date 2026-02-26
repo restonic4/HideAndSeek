@@ -17,7 +17,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public class WhitelistManager {
-    private static final String API_URL_TEMPLATE = "https://api.chaotic-loom.com//events/%s/whitelist";
+    private static final String API_URL_TEMPLATE = "https://api.chaotic-loom.com/events/%s/whitelist";
     private static final Gson gson = new Gson();
     private static final HttpClient httpClient = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.ALWAYS)
